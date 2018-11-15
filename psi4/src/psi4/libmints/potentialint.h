@@ -68,8 +68,9 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
     int ns1 = bs1_->nshell();
     int ns2 = bs2_->nshell();
     int bf1_offset = 0;
-    double exp_cut=1e-12+2.3;
-    double dens_cut=1e-12;
+    double exp_cut=12+2.3;
+    double dens_cut=1.0e-12;
+    // printf("tolerances %f %e \n",exp_cut,dens_cut);
     for (int i = 0; i < ns1; ++i) {
         const GaussianShell &s1 = bs1_->shell(i);
         int ni = s1.ncartesian();
@@ -109,11 +110,12 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
 
             // neglect near zero (i,j)-charge distributions
             if(atom_a!=atom_b) {
-                double zmin_a=9e9;
-                double zmin_b=9e9;
+                double zmin_a = 9e9;
+                double zmin_b = 9e9;
                 for (int p1 = 0; p1 < nprim1; ++p1) {
                     double x = s1.exp(p1);
                     if (x<zmin_a) {zmin_a=x;};
+                    // printf("zet %f %f \n",x,zmin_a);
                 }
                 for (int p1 = 0; p1 < nprim2; ++p1) {
                     double x = s2.exp(p1);
@@ -152,16 +154,24 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
                         double oog = 1.0 / gamma;
 
                         // density factor
-                        double dens=c1*c2;
+                        double dens = c1*c2;
                         if(atom_a!=atom_b) {
                             double expo=a2*a1*AB2*oog;
-                            if(expo>exp_cut) continue;
-                            dens=c1*c2*exp(-expo);
+                            // if(expo>exp_cut) continue;
+                            dens = c1*c2*std::exp(-expo);
+                            // printf("info: %e %f %f %e \n",dens,c1,c2,expo);
                         };  
-                        if(abs(dens)<dens_cut) continue;
+                        if(std::abs(dens)<dens_cut) {
+                            // printf("dens factor screening %e | cut %e \n",std::abs(dens),dens_cut);
+                            continue;
+                        } 
                         
                         // pot_int
-                        if(dens*M_PI*2*oog< dens_cut) continue; 
+                        double val = std::abs(dens*M_PI*2*oog);
+                        if(val< dens_cut){
+                            // printf(" pot_int screening %e | cut %e \n",val,dens_cut);
+                            continue; 
+                        } 
 
                         double PA[3], PB[3], P[3];
                         P[0] = (a1 * A[0] + a2 * B[0]) * oog;
