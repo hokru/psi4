@@ -89,6 +89,8 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
             B[0] = s2.center()[0];
             B[1] = s2.center()[1];
             B[2] = s2.center()[2];
+            int atom_a = s1.ncenter();
+            int atom_b = s2.ncenter();
 
             int izm = 1;
             int iym = am1 + 1;
@@ -102,6 +104,26 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
             AB2 += (A[0] - B[0]) * (A[0] - B[0]);
             AB2 += (A[1] - B[1]) * (A[1] - B[1]);
             AB2 += (A[2] - B[2]) * (A[2] - B[2]);
+
+            if(atom_a!=atom_b) {
+                double zmin_a=9e9;
+                double zmin_b=9e9;
+                for (int p1 = 0; p1 < nprim1; ++p1) {
+                    double x = s1.exp(p1);
+                    if (x<zmin_a) {zmin_a=x;};
+                }
+                for (int p1 = 0; p1 < nprim2; ++p1) {
+                    double x = s2.exp(p1);
+                    if (x<zmin_b) {zmin_b=x;};
+                }
+                double approx=AB2*zmin_b*zmin_a/(zmin_a+zmin_b);
+                // if(approx>2.3) {
+                if(approx>2.3) {
+                    bf2_offset += nj;
+                    // printf("exp screening %f | z_a  %f z_a %f \n",approx,zmin_a,zmin_b);
+                    continue;  
+                } 
+            }
 
             double ***vi = potential_recur_->vi();
 
@@ -126,6 +148,15 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
                         double c2 = s2.coef(p2);
                         double gamma = a1 + a2;
                         double oog = 1.0 / gamma;
+
+                        // double dens=c1*c2;
+                        // if(atom_a!=atom_b) {
+                        //     double expo=a2*a1*AB2*oog;
+                        //     // if(expo>2.3) continue;
+                        //     dens=c1*c2*exp(-expo);
+                        //     if(abs(dens)<1e-14) continue;
+                        // };  
+                        
 
                         double PA[3], PB[3], P[3];
                         P[0] = (a1 * A[0] + a2 * B[0]) * oog;
