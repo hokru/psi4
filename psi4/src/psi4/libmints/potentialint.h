@@ -151,14 +151,16 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
                         double gamma = a1 + a2;
                         double oog = 1.0 / gamma;
 
+                        // density factor
                         double dens=c1*c2;
                         if(atom_a!=atom_b) {
                             double expo=a2*a1*AB2*oog;
                             if(expo>exp_cut) continue;
                             dens=c1*c2*exp(-expo);
-                            if(abs(dens)<dens_cut) continue;
                         };  
+                        if(abs(dens)<dens_cut) continue;
                         
+                        // pot_int
                         if(dens*M_PI*2*oog< dens_cut) continue; 
 
                         double PA[3], PB[3], P[3];
