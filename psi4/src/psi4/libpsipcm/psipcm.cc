@@ -40,6 +40,7 @@
 #include "psi4/libmints/potentialint.h"
 #include "psi4/libmints/vector.h"
 #include "psi4/libpsi4util/PsiOutStream.h"
+#include "psi4/libqt/qt.h"
 
 #include <PCMSolver/PCMInput.h>
 
@@ -362,7 +363,9 @@ double PCM::compute_E_electronic(const SharedVector &MEP_e) const {
 SharedMatrix PCM::compute_V(const SharedVector &ASC) const {
     auto V_pcm_cart = std::make_shared<Matrix>("PCM potential cart", basisset_->nao(), basisset_->nao());
     ContractOverChargesFunctor contract_charges_functor(ASC->pointer(0), V_pcm_cart);
+    timer_on("PCM: potential");
     potential_int_->compute(contract_charges_functor);
+    timer_off("PCM: potential");
     // The potential might need to be transformed to the spherical harmonic basis
     SharedMatrix V_pcm_pure;
     if (basisset_->has_puream()) {

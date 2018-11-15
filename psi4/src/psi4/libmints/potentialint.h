@@ -68,6 +68,8 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
     int ns1 = bs1_->nshell();
     int ns2 = bs2_->nshell();
     int bf1_offset = 0;
+    double exp_cut=1e-12+2.3;
+    double dens_cut=1e-12;
     for (int i = 0; i < ns1; ++i) {
         const GaussianShell &s1 = bs1_->shell(i);
         int ni = s1.ncartesian();
@@ -105,6 +107,7 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
             AB2 += (A[1] - B[1]) * (A[1] - B[1]);
             AB2 += (A[2] - B[2]) * (A[2] - B[2]);
 
+            // neglect near zero (i,j)-charge distributions
             if(atom_a!=atom_b) {
                 double zmin_a=9e9;
                 double zmin_b=9e9;
@@ -117,8 +120,7 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
                     if (x<zmin_b) {zmin_b=x;};
                 }
                 double approx=AB2*zmin_b*zmin_a/(zmin_a+zmin_b);
-                // if(approx>2.3) {
-                if(approx>2.3) {
+                if(approx>exp_cut) {
                     bf2_offset += nj;
                     // printf("exp screening %f | z_a  %f z_a %f \n",approx,zmin_a,zmin_b);
                     continue;  
@@ -149,14 +151,15 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
                         double gamma = a1 + a2;
                         double oog = 1.0 / gamma;
 
-                        // double dens=c1*c2;
-                        // if(atom_a!=atom_b) {
-                        //     double expo=a2*a1*AB2*oog;
-                        //     // if(expo>2.3) continue;
-                        //     dens=c1*c2*exp(-expo);
-                        //     if(abs(dens)<1e-14) continue;
-                        // };  
+                        double dens=c1*c2;
+                        if(atom_a!=atom_b) {
+                            double expo=a2*a1*AB2*oog;
+                            if(expo>exp_cut) continue;
+                            dens=c1*c2*exp(-expo);
+                            if(abs(dens)<dens_cut) continue;
+                        };  
                         
+                        if(dens*M_PI*2*oog< dens_cut) continue; 
 
                         double PA[3], PB[3], P[3];
                         P[0] = (a1 * A[0] + a2 * B[0]) * oog;
@@ -173,6 +176,7 @@ void PCMPotentialInt::compute(PCMPotentialIntFunctor &functor) {
                         PC[2] = P[2] - C[2];
 
                         double over_pf = exp(-a1 * a2 * AB2 * oog) * sqrt(M_PI * oog) * M_PI * oog * c1 * c2;
+                        
 
                         // Do recursion
                         potential_recur_->compute(PA, PB, PC, gamma, am1, am2);
