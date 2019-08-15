@@ -32,33 +32,34 @@
 #include "psi4/libqt/qt.h"
 #include <cmath>
 
+
 namespace psi {
 namespace sapt {
 
 PSAPT::PSAPT(SharedWavefunction Dimer, SharedWavefunction MonomerA, SharedWavefunction MonomerB, Options& options,
                  std::shared_ptr<PSIO> psio)
-    : SAPT2p(Dimer, MonomerA, MonomerB, options, psio),
-      e_elst13_(0.0),
-      e_ind30_(0.0),
-      e_exch_ind30_(0.0),
-      e_ind30r_(0.0),
-      e_exch_ind30r_(0.0),
-      e_ind_disp30_(0.0),
-      e_exch_ind_disp30_(0.0),
-      e_disp30_(0.0),
-      e_exch_disp30_(0.0),
-      e_sapt2pp3_(0.0),
-      e_sapt2p3_(0.0),
-      e_sapt2pp3_ccd_(0.0),
-      e_sapt2p3_ccd_(0.0) {
-    third_order_ = options_.get_bool("DO_THIRD_ORDER");
-}
+    : SAPT2p3(Dimer, MonomerA, MonomerB, options, psio)
+      // e_elst13_(0.0),
+      // e_ind30_(0.0),
+      // e_exch_ind30_(0.0),
+      // e_ind30r_(0.0),
+      // e_exch_ind30r_(0.0),
+      // e_ind_disp30_(0.0),
+      // e_exch_ind_disp30_(0.0),
+      // e_disp30_(0.0),
+      // e_exch_disp30_(0.0),
+      // e_sapt2pp3_(0.0),
+      // e_sapt2p3_(0.0),
+      // e_sapt2pp3_ccd_(0.0),
+//       e_sapt2p3_ccd_(0.0) {
+//     third_order_ = options_.get_bool("DO_THIRD_ORDER");
+{}
 
 PSAPT::~PSAPT() {}
 
 double PSAPT::compute_energy() {
     print_header();
-
+    
     timer_on("DF Integrals       ");
     df_integrals();
     timer_off("DF Integrals       ");
@@ -66,7 +67,7 @@ double PSAPT::compute_energy() {
     w_integrals();
     timer_off("Omega Integrals    ");
     timer_on("Amplitudes         ");
-    amplitudes();
+    SAPT2p3::amplitudes();
     timer_off("Amplitudes         ");
     timer_on("Elst10             ");
     elst10();
@@ -86,9 +87,9 @@ double PSAPT::compute_energy() {
     // timer_on("Disp20             ");
     // disp20();
     // timer_off("Disp20             ");
-    timer_on("Exch-Disp20        ");
-    exch_disp20();
-    timer_off("Exch-Disp20        ");
+    // timer_on("Exch-Disp20        ");
+    // exch_disp20();
+    // timer_off("Exch-Disp20        ");
     timer_on("Elst12             ");
     elst12();
     timer_off("Elst12             ");
@@ -129,26 +130,26 @@ double PSAPT::compute_energy() {
     // timer_on("Disp30             ");
     // disp30();
     // timer_off("Disp30             ");
-    if (third_order_) {
-        timer_on("ExchDisp30         ");
-        exch_disp30();
-        timer_off("ExchDisp30         ");
-        timer_on("Ind30              ");
-        ind30();
-        timer_off("Ind30              ");
-        timer_on("Ind30,r            ");
-        ind30r();
-        timer_off("Ind30,r            ");
-        timer_on("Exch-Ind30         ");
-        exch_ind30();
-        timer_off("Exch-Ind30         ");
-        timer_on("IndDisp30          ");
-        ind_disp30();
-        timer_off("IndDisp30          ");
-        timer_on("ExchIndDisp30      ");
-        exch_ind_disp30();
-        timer_off("ExchIndDisp30      ");
-    }
+    // if (third_order_) {
+    //     timer_on("ExchDisp30         ");
+    //     exch_disp30();
+    //     timer_off("ExchDisp30         ");
+    //     timer_on("Ind30              ");
+    //     ind30();
+    //     timer_off("Ind30              ");
+    //     timer_on("Ind30,r            ");
+    //     ind30r();
+    //     timer_off("Ind30,r            ");
+    //     timer_on("Exch-Ind30         ");
+    //     exch_ind30();
+    //     timer_off("Exch-Ind30         ");
+    //     // timer_on("IndDisp30          ");
+    //     // ind_disp30();
+    //     // timer_off("IndDisp30          ");
+    //     timer_on("ExchIndDisp30      ");
+    //     exch_ind_disp30();
+    //     timer_off("ExchIndDisp30      ");
+    // }
 
     print_results();
 
@@ -157,9 +158,9 @@ double PSAPT::compute_energy() {
 
 void PSAPT::print_header() {
 
-    outfile->Printf("       pSAPT-D4   \n");
-    outfile->Printf("    H. Kruse & Ed Hohenstein\n");
-    outfile->Printf("     2019\n");
+    outfile->Printf("       SAPT-D4   \n");
+    outfile->Printf("       H. Kruse, E. Hohenstein \n");
+    outfile->Printf("       summer 2019\n");
     outfile->Printf("\n");
     outfile->Printf("      Orbital Information\n");
     outfile->Printf("  --------------------------\n");
@@ -192,10 +193,6 @@ void PSAPT::print_header() {
     long int ovov = occ * occ * vir * vir;
     long int vvnri = vir * vir * ndf_;
     double memory = 8.0 * (vvnri + ovov * 3L) / 1000000.0;
-    if (ccd_disp_) {
-        double ccd_memory = 8.0 * (ovov * 5L) / 1000000.0;
-        memory = (memory > ccd_memory ? memory : ccd_memory);
-    }
 
     if (print_) {
         outfile->Printf("    Estimated memory usage: %.1lf MB\n\n", memory);
@@ -204,8 +201,8 @@ void PSAPT::print_header() {
         if (mem < vvnri + ovov * 3L) throw PsiException("Not enough memory", __FILE__, __LINE__);
 
     outfile->Printf("    Natural Orbital Cutoff: %11.3E\n", occ_cutoff_);
-    outfile->Printf("    Disp(T3) Truncation:    %11s\n", (nat_orbs_t3_ ? "Yes" : "No"));
-    outfile->Printf("    CCD (vv|vv) Truncation: %11s\n", (nat_orbs_v4_ ? "Yes" : "No"));
+    // outfile->Printf("    Disp(T3) Truncation:    %11s\n", (nat_orbs_t3_ ? "Yes" : "No"));
+    // outfile->Printf("    CCD (vv|vv) Truncation: %11s\n", (nat_orbs_v4_ ? "Yes" : "No"));
     outfile->Printf("    MBPT T2 Truncation:     %11s\n", (nat_orbs_t2_ ? "Yes" : "No"));
     outfile->Printf("\n");
 }
@@ -342,12 +339,7 @@ void PSAPT::print_results() {
         double tot_exch = e_exch10_ + *scal_it * (e_exch11_ + e_exch12_);
         double tot_ind =
             e_ind20_ + dHF3 + e_ind22_ + e_ind30r_ + *scal_it * (e_exch_ind20_ + e_exch_ind22_ + e_exch_ind30r_);
-        if (e_MP2 != 0.0) {
-            if (third_order_)
-                tot_ind += dMP2_3;
-            else
-                tot_ind += dMP2_2;
-        }
+        if (e_MP2 != 0.0) {tot_ind += dMP2_2; }
         double tot_ct = e_ind20_ + e_ind22_ + e_ind30r_ + *scal_it * (e_exch_ind20_ + e_exch_ind22_ + e_exch_ind30r_);
         double tot_disp = 0.0;
         if (nat_orbs_t3_)
@@ -357,15 +349,6 @@ void PSAPT::print_results() {
             tot_disp = e_disp20_ + e_disp21_ + e_disp22sdq_ + e_disp22t_ + e_disp30_ + e_ind_disp30_ +
                        *scal_it * (e_exch_disp20_ + e_exch_disp30_ + e_exch_ind_disp30_);
 
-        if (ccd_disp_) {
-            tot_disp = 0.0;
-            if (nat_orbs_t3_)
-                tot_disp = e_disp2d_ccd_ + e_disp22s_ccd_ + e_est_disp22t_ccd_ + *scal_it * e_exch_disp20_;
-            else
-                tot_disp = e_disp2d_ccd_ + e_disp22s_ccd_ + e_disp22t_ccd_ + *scal_it * e_exch_disp20_;
-
-            tot_disp += e_disp30_ + e_ind_disp30_ + *scal_it * (e_exch_disp30_ + e_exch_ind_disp30_);
-        }
 
         if (scal_it == Xscal.begin()) {
             outfile->Printf("\n    SAPT Results \n");
@@ -403,34 +386,22 @@ void PSAPT::print_results() {
                         scaled.c_str(), tot_ind * 1000.0, tot_ind * pc_hartree2kcalmol, tot_ind * pc_hartree2kJmol);
         outfile->Printf("      Ind20,r                 %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                         e_ind20_ * 1000.0, e_ind20_ * pc_hartree2kcalmol, e_ind20_ * pc_hartree2kJmol);
-        if (third_order_)
-            outfile->Printf("      Ind30,r                 %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            e_ind30r_ * 1000.0, e_ind30r_ * pc_hartree2kcalmol, e_ind30r_ * pc_hartree2kJmol);
+
         outfile->Printf("      Ind22                   %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                         e_ind22_ * 1000.0, e_ind22_ * pc_hartree2kcalmol, e_ind22_ * pc_hartree2kJmol);
         outfile->Printf("      Exch-Ind20,r %3s        %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                         scaled.c_str(), *scal_it * e_exch_ind20_ * 1000.0,
                         *scal_it * e_exch_ind20_ * pc_hartree2kcalmol, *scal_it * e_exch_ind20_ * pc_hartree2kJmol);
-        if (third_order_)
-            outfile->Printf("      Exch-Ind30,r %3s        %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            scaled.c_str(), *scal_it * e_exch_ind30r_ * 1000.0,
-                            *scal_it * e_exch_ind30r_ * pc_hartree2kcalmol,
-                            *scal_it * e_exch_ind30r_ * pc_hartree2kJmol);
+
         outfile->Printf("      Exch-Ind22 %3s          %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                         scaled.c_str(), *scal_it * e_exch_ind22_ * 1000.0,
                         *scal_it * e_exch_ind22_ * pc_hartree2kcalmol, *scal_it * e_exch_ind22_ * pc_hartree2kJmol);
         outfile->Printf("      delta HF,r (2) %3s      %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                         scaled.c_str(), dHF2 * 1000.0, dHF2 * pc_hartree2kcalmol, dHF2 * pc_hartree2kJmol);
-        if (third_order_)
-            outfile->Printf("      delta HF,r (3) %3s      %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            scaled.c_str(), dHF3 * 1000.0, dHF3 * pc_hartree2kcalmol, dHF3 * pc_hartree2kJmol);
+        
         if (e_MP2 != 0.0) {
             outfile->Printf("      delta MP2,r (2) %3s     %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                             scaled.c_str(), dMP2_2 * 1000.0, dMP2_2 * pc_hartree2kcalmol, dMP2_2 * pc_hartree2kJmol);
-            if (third_order_)
-                outfile->Printf("      delta MP2,r (3) %3s     %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                                scaled.c_str(), dMP2_3 * 1000.0, dMP2_3 * pc_hartree2kcalmol,
-                                dMP2_3 * pc_hartree2kJmol);
         }
         outfile->Printf("\n    Dispersion %3s            %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                         scaled.c_str(), tot_disp * 1000.0, tot_disp * pc_hartree2kcalmol, tot_disp * pc_hartree2kJmol);
@@ -450,37 +421,10 @@ void PSAPT::print_results() {
                                 e_est_disp22t_ * 1000.0, e_est_disp22t_ * pc_hartree2kcalmol,
                                 e_est_disp22t_ * pc_hartree2kJmol);
         }
-        if (ccd_disp_) {
-            outfile->Printf("      Disp2 (CCD)             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            e_disp2d_ccd_ * 1000.0, e_disp2d_ccd_ * pc_hartree2kcalmol,
-                            e_disp2d_ccd_ * pc_hartree2kJmol);
-            outfile->Printf("      Disp22 (S) (CCD)        %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            e_disp22s_ccd_ * 1000.0, e_disp22s_ccd_ * pc_hartree2kcalmol,
-                            e_disp22s_ccd_ * pc_hartree2kJmol);
-            outfile->Printf("      Disp22 (T) (CCD)        %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            e_disp22t_ccd_ * 1000.0, e_disp22t_ccd_ * pc_hartree2kcalmol,
-                            e_disp22t_ccd_ * pc_hartree2kJmol);
-            if (nat_orbs_t3_)
-                outfile->Printf("      Est. Disp22 (T) (CCD)   %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                                e_est_disp22t_ccd_ * 1000.0, e_est_disp22t_ccd_ * pc_hartree2kcalmol,
-                                e_est_disp22t_ccd_ * pc_hartree2kJmol);
-        }
+        
         outfile->Printf("      Exch-Disp20 %3s         %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                         scaled.c_str(), *scal_it * e_exch_disp20_ * 1000.0,
                         *scal_it * e_exch_disp20_ * pc_hartree2kcalmol, *scal_it * e_exch_disp20_ * pc_hartree2kJmol);
-        if (third_order_) {
-            outfile->Printf("      Exch-Disp30 %3s         %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            scaled.c_str(), *scal_it * e_exch_disp30_ * 1000.0,
-                            *scal_it * e_exch_disp30_ * pc_hartree2kcalmol,
-                            *scal_it * e_exch_disp30_ * pc_hartree2kJmol);
-            outfile->Printf("      Ind-Disp30              %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            e_ind_disp30_ * 1000.0, e_ind_disp30_ * pc_hartree2kcalmol,
-                            e_ind_disp30_ * pc_hartree2kJmol);
-            outfile->Printf("      Exch-Ind-Disp30 %3s     %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            scaled.c_str(), *scal_it * e_exch_ind_disp30_ * 1000.0,
-                            *scal_it * e_exch_ind_disp30_ * pc_hartree2kcalmol,
-                            *scal_it * e_exch_ind_disp30_ * pc_hartree2kJmol);
-        }
 
         outfile->Printf("\n  Total HF                    %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                         eHF_ * 1000.0, eHF_ * pc_hartree2kcalmol, eHF_ * pc_hartree2kJmol);
@@ -495,10 +439,7 @@ void PSAPT::print_results() {
             outfile->Printf("  Total SAPT2+(3) %3s         %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                             scaled.c_str(), e_sapt2pp3_ * 1000.0, e_sapt2pp3_ * pc_hartree2kcalmol,
                             e_sapt2pp3_ * pc_hartree2kJmol);
-            if (third_order_)
-                outfile->Printf("  Total SAPT2+3 %3s           %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                                scaled.c_str(), e_sapt2p3_ * 1000.0, e_sapt2p3_ * pc_hartree2kcalmol,
-                                e_sapt2p3_ * pc_hartree2kJmol);
+
             if (e_MP2 != 0.0) {
                 outfile->Printf("  Total SAPT2+dMP2 %3s        %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                                 scaled.c_str(), e_sapt2p_dmp2 * 1000.0, e_sapt2p_dmp2 * pc_hartree2kcalmol,
@@ -506,105 +447,19 @@ void PSAPT::print_results() {
                 outfile->Printf("  Total SAPT2+(3)dMP2 %3s     %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                                 scaled.c_str(), e_sapt_2pp3_dmp2 * 1000.0, e_sapt_2pp3_dmp2 * pc_hartree2kcalmol,
                                 e_sapt_2pp3_dmp2 * pc_hartree2kJmol);
-                if (third_order_)
-                    outfile->Printf("  Total SAPT2+3dMP2   %3s     %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                                    scaled.c_str(), e_sapt2p3_dmp2 * 1000.0, e_sapt2p3_dmp2 * pc_hartree2kcalmol,
-                                    e_sapt2p3_dmp2 * pc_hartree2kJmol);
+
             }
         }
-        if (ccd_disp_) {
-            outfile->Printf("  Total SAPT2+(CCD) %3s       %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            scaled.c_str(), e_sapt2p_ccd_ * 1000.0, e_sapt2p_ccd_ * pc_hartree2kcalmol,
-                            e_sapt2p_ccd_ * pc_hartree2kJmol);
-            outfile->Printf("  Total SAPT2+(3)(CCD) %3s    %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            scaled.c_str(), e_sapt2pp3_ccd_ * 1000.0, e_sapt2pp3_ccd_ * pc_hartree2kcalmol,
-                            e_sapt2pp3_ccd_ * pc_hartree2kJmol);
-            if (third_order_)
-                outfile->Printf("  Total SAPT2+3(CCD) %3s      %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                                scaled.c_str(), e_sapt2p3_ccd_ * 1000.0, e_sapt2p3_ccd_ * pc_hartree2kcalmol,
-                                e_sapt2p3_ccd_ * pc_hartree2kJmol);
-            if (e_MP2 != 0.0) {
-                outfile->Printf("  Total SAPT2+(CCD)dMP2 %3s   %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                                scaled.c_str(), e_sapt2p_ccd_dmp2 * 1000.0, e_sapt2p_ccd_dmp2 * pc_hartree2kcalmol,
-                                e_sapt2p_ccd_dmp2 * pc_hartree2kJmol);
-                outfile->Printf("  Total SAPT2+(3)(CCD)dMP2 %3s%16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                                scaled.c_str(), e_sapt2pp3_ccd_dmp2 * 1000.0, e_sapt2pp3_ccd_dmp2 * pc_hartree2kcalmol,
-                                e_sapt2pp3_ccd_dmp2 * pc_hartree2kJmol);
-                if (third_order_)
-                    outfile->Printf("  Total SAPT2+3(CCD)dMP2 %3s  %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                                    scaled.c_str(), e_sapt2p3_ccd_dmp2 * 1000.0,
-                                    e_sapt2p3_ccd_dmp2 * pc_hartree2kcalmol, e_sapt2p3_ccd_dmp2 * pc_hartree2kJmol);
-            }
-        }
-        if (scal_it == Xscal.begin()) {
-            outfile->Printf("\n  Special recipe for scaled SAPT0 (see Manual):\n");
-            outfile->Printf("    Electrostatics sSAPT0     %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            elst_sSAPT0 * 1000.0, elst_sSAPT0 * pc_hartree2kcalmol, elst_sSAPT0 * pc_hartree2kJmol);
-            outfile->Printf("    Exchange sSAPT0           %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            exch_sSAPT0 * 1000.0, exch_sSAPT0 * pc_hartree2kcalmol, exch_sSAPT0 * pc_hartree2kJmol);
-            outfile->Printf("    Induction sSAPT0          %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            ind_sSAPT0 * 1000.0, ind_sSAPT0 * pc_hartree2kcalmol, ind_sSAPT0 * pc_hartree2kJmol);
-            outfile->Printf("    Dispersion sSAPT0         %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            disp_sSAPT0 * 1000.0, disp_sSAPT0 * pc_hartree2kcalmol, disp_sSAPT0 * pc_hartree2kJmol);
-            outfile->Printf("  Total sSAPT0                %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            e_sSAPT0 * 1000.0, e_sSAPT0 * pc_hartree2kcalmol, e_sSAPT0 * pc_hartree2kJmol);
-        }
-        outfile->Printf(
-            "  "
-            "--------------------------------------------------------------------------------------------------------"
-            "\n");
+        
 
-        // Only export if not scaled.
-        if (scal_it == Xscal.begin()) {
-            Process::environment.globals["SAPT ELST10,R ENERGY"] = e_elst10_;
-            Process::environment.globals["SAPT ELST12,R ENERGY"] = e_elst12_;
-            Process::environment.globals["SAPT ELST13,R ENERGY"] = e_elst13_;
 
-            Process::environment.globals["SAPT EXCH10 ENERGY"] = e_exch10_;
-            Process::environment.globals["SAPT EXCH10(S^2) ENERGY"] = e_exch10_s2_;
-            Process::environment.globals["SAPT EXCH11(S^2) ENERGY"] = e_exch11_;
-            Process::environment.globals["SAPT EXCH12(S^2) ENERGY"] = e_exch12_;
 
-            Process::environment.globals["SAPT IND20,R ENERGY"] = e_ind20_;
-            Process::environment.globals["SAPT IND22 ENERGY"] = e_ind22_;
-            Process::environment.globals["SAPT EXCH-IND20,R ENERGY"] = e_exch_ind20_;
-            Process::environment.globals["SAPT EXCH-IND22 ENERGY"] = e_exch_ind22_;
-            Process::environment.globals["SAPT HF TOTAL ENERGY"] = eHF_;
-            if (third_order_) {
-                Process::environment.globals["SAPT IND30,R ENERGY"] = e_ind30r_;
-                Process::environment.globals["SAPT IND-DISP30 ENERGY"] = e_ind_disp30_;
-                Process::environment.globals["SAPT EXCH-IND30,R ENERGY"] = e_exch_ind30r_;
-                Process::environment.globals["SAPT EXCH-IND-DISP30 ENERGY"] = e_exch_ind_disp30_;
-                Process::environment.globals["SAPT EXCH-DISP30 ENERGY"] = e_exch_disp30_;
-            }
 
-            Process::environment.globals["SAPT CT ENERGY"] = tot_ct;
-
-            Process::environment.globals["SAPT DISP20 ENERGY"] = e_disp20_;
-            Process::environment.globals["SAPT DISP21 ENERGY"] = e_disp21_;
-            Process::environment.globals["SAPT DISP30 ENERGY"] = e_disp30_;
-            Process::environment.globals["SAPT EXCH-DISP20 ENERGY"] = e_exch_disp20_;
-
-            if (mbpt_disp_) {
-                Process::environment.globals["SAPT DISP22(SDQ) ENERGY"] = e_disp22sdq_;
-                Process::environment.globals["SAPT DISP22(T) ENERGY"] = e_disp22t_;
-                if (nat_orbs_t3_) {
-                    Process::environment.globals["SAPT EST.DISP22(T) ENERGY"] = e_est_disp22t_;
-                } else {
-                    Process::environment.globals["SAPT EST.DISP22(T) ENERGY"] = e_disp22t_;
-                }
-            }
-
-            if (ccd_disp_) {
-                Process::environment.globals["SAPT DISP2(CCD) ENERGY"] = e_disp2d_ccd_;
-                Process::environment.globals["SAPT DISP22(S)(CCD) ENERGY"] = e_disp22s_ccd_;
-                Process::environment.globals["SAPT DISP22(T)(CCD) ENERGY"] = e_disp22t_ccd_;
-                if (nat_orbs_t3_) {
-                    Process::environment.globals["SAPT EST.DISP22(T)(CCD) ENERGY"] = e_est_disp22t_ccd_;
-                } else {
-                    Process::environment.globals["SAPT EST.DISP22(T)(CCD) ENERGY"] = e_disp22t_ccd_;
-                }
-            }
+        Process::environment.globals["SAPT-D4 ELST ENERGY"] = tot_elst;
+        Process::environment.globals["SAPT-D4 IND ENERGY"] = tot_ind;
+        Process::environment.globals["SAPT-D4 DISP ENERGY"] = 0.0;
+        Process::environment.globals["SAPT-D4 EXCH ENERGY"] = tot_exch;
+        Process::environment.globals["SAPT-D4 TOTAL ENERGY"] = tot_exch+tot_ind+tot_elst;
 
             // for auto-docs
             /*- Process::environment.globals["SAPT ELST ENERGY"] -*/
@@ -613,86 +468,7 @@ void PSAPT::print_results() {
             /*- Process::environment.globals["SAPT DISP ENERGY"] -*/
             /*- Process::environment.globals["SAPT TOTAL ENERGY"] -*/
 
-            /*- Process::environment.globals["SAPT0 ELST ENERGY"] -*/
-            /*- Process::environment.globals["SSAPT0 ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2 ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+ ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(CCD) ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+DMP2 ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(CCD)DMP2 ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3) ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)(CCD) ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)DMP2 ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)(CCD)DMP2 ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3 ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3(CCD) ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3DMP2 ELST ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3(CCD)DMP2 ELST ENERGY"] -*/
-
-            /*- Process::environment.globals["SAPT0 EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SSAPT0 EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2 EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+ EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(CCD) EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+DMP2 EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(CCD)DMP2 EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3) EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)(CCD) EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)DMP2 EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)(CCD)DMP2 EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3 EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3(CCD) EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3DMP2 EXCH ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3(CCD)DMP2 EXCH ENERGY"] -*/
-
-            /*- Process::environment.globals["SAPT0 IND ENERGY"] -*/
-            /*- Process::environment.globals["SSAPT0 IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2 IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+ IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(CCD) IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+DMP2 IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(CCD)DMP2 IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3) IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)(CCD) IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)DMP2 IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)(CCD)DMP2 IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3 IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3(CCD) IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3DMP2 IND ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3(CCD)DMP2 IND ENERGY"] -*/
-
-            /*- Process::environment.globals["SAPT0 DISP ENERGY"] -*/
-            /*- Process::environment.globals["SSAPT0 DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2 DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+ DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(CCD) DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+DMP2 DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(CCD)DMP2 DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3) DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)(CCD) DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)DMP2 DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)(CCD)DMP2 DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3 DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3(CCD) DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3DMP2 DISP ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3(CCD)DMP2 DISP ENERGY"] -*/
-
-            /*- Process::environment.globals["SAPT0 TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SSAPT0 TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2 TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+ TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(CCD) TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+DMP2 TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(CCD)DMP2 TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3) TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)(CCD) TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)DMP2 TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+(3)(CCD)DMP2 TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3 TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3(CCD) TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3DMP2 TOTAL ENERGY"] -*/
-            /*- Process::environment.globals["SAPT2+3(CCD)DMP2 TOTAL ENERGY"] -*/
-        }
+        
     }
 }
 }  // namespace sapt

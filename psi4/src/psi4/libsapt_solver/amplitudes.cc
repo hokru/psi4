@@ -29,6 +29,7 @@
 #include "sapt2.h"
 #include "sapt2p.h"
 #include "sapt2p3.h"
+#include "psapt.h"
 #include "psi4/libciomr/libciomr.h"
 #include "psi4/libpsio/psio.hpp"
 #include "psi4/libpsio/psio.h"

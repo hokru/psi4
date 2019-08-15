@@ -82,6 +82,7 @@ procedures = {
         'sapt2+(ccd)dmp2' : proc.run_sapt,
         'sapt2+(3)(ccd)dmp2' : proc.run_sapt,
         'sapt2+3(ccd)dmp2' : proc.run_sapt,
+        'sapt-d4'       : proc.run_sapt,
         'sapt0-ct'      : proc.run_sapt_ct,
         'sapt2-ct'      : proc.run_sapt_ct,
         'sapt2+-ct'     : proc.run_sapt_ct,

@@ -3549,6 +3549,13 @@ def run_sapt(name, **kwargs):
     core.print_out('\n')
     e_sapt = core.sapt(dimer_wfn, monomerA_wfn, monomerB_wfn)
 
+    if name in ['sapt-d4', 'saptd4']:
+        core.print_out('Running D4 correction..')
+    core.print_out(
+            "  "
+            "--------------------------------------------------------------------------------------------------------"
+            "\n")
+
     from psi4.driver.qcdb.psivardefs import sapt_psivars
     p4util.expand_psivars(sapt_psivars())
     optstash.restore()
