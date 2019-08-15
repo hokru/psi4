@@ -29,5 +29,6 @@ list(APPEND sources
   sapt2p3.cc
   usapt0.cc
   utils.cc
+  psapt.cc
   )
 psi4_add_module(lib sapt_solver sources)

@@ -3496,6 +3496,8 @@ def run_sapt(name, **kwargs):
     core.set_local_option('SAPT', 'D_CONVERGENCE', 10e-10)
     if name in ['sapt0', 'ssapt0']:
         core.set_local_option('SAPT', 'SAPT_LEVEL', 'SAPT0')
+    if name in ['sapt-d4', 'saptd4']:
+        core.set_local_option('SAPT', 'SAPT_LEVEL', 'SAPT-D4')
     elif name == 'sapt2':
         core.set_local_option('SAPT', 'SAPT_LEVEL', 'SAPT2')
     elif name in ['sapt2+', 'sapt2+dmp2']:

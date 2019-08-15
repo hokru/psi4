@@ -34,6 +34,7 @@
 #include "psi4/libsapt_solver/sapt2.h"
 #include "psi4/libsapt_solver/sapt2p.h"
 #include "psi4/libsapt_solver/sapt2p3.h"
+#include "psi4/libsapt_solver/psapt.h"
 
 #include "psi4/libciomr/libciomr.h"
 #include "psi4/liboptions/liboptions.h"
@@ -89,6 +90,9 @@ PsiReturnType sapt(SharedWavefunction Dimer, SharedWavefunction MonomerA, Shared
         sapt.compute_energy();
     } else if (options.get_str("SAPT_LEVEL") == "SAPT2+3") {
         SAPT2p3 sapt(Dimer, MonomerA, MonomerB, options, psio);
+        sapt.compute_energy();
+    } else if (options.get_str("SAPT_LEVEL") == "SAPT-D4") {
+        PSAPT sapt(Dimer, MonomerA, MonomerB, options, psio);
         sapt.compute_energy();
     } else {
         throw PSIEXCEPTION("Unrecognized SAPT type");
