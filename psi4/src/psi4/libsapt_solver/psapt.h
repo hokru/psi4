@@ -39,10 +39,11 @@ class PSAPT : public SAPT2p3 {
     void print_header() override;
     void print_results() override;
 
-    
+    bool third_order_;
 
-   // protected:
-   //  double e_elst13_;
+   protected:
+    double e_saptd4_;
+    // double e_elst13_;
    //  double e_ind30_;
    //  double e_exch_ind30_;
    //  double e_ind30r_;

@@ -52,8 +52,8 @@ PSAPT::PSAPT(SharedWavefunction Dimer, SharedWavefunction MonomerA, SharedWavefu
       // e_sapt2p3_(0.0),
       // e_sapt2pp3_ccd_(0.0),
 //       e_sapt2p3_ccd_(0.0) {
-//     third_order_ = options_.get_bool("DO_THIRD_ORDER");
-{}
+    {third_order_ = options_.get_bool("DO_THIRD_ORDER");}
+// {}
 
 PSAPT::~PSAPT() {}
 
@@ -87,9 +87,9 @@ double PSAPT::compute_energy() {
     // timer_on("Disp20             ");
     // disp20();
     // timer_off("Disp20             ");
-    // timer_on("Exch-Disp20        ");
-    // exch_disp20();
-    // timer_off("Exch-Disp20        ");
+    timer_on("Exch-Disp20        ");
+    exch_disp20();
+    timer_off("Exch-Disp20        ");
     timer_on("Elst12             ");
     elst12();
     timer_off("Elst12             ");
@@ -130,30 +130,30 @@ double PSAPT::compute_energy() {
     // timer_on("Disp30             ");
     // disp30();
     // timer_off("Disp30             ");
-    // if (third_order_) {
-    //     timer_on("ExchDisp30         ");
-    //     exch_disp30();
-    //     timer_off("ExchDisp30         ");
-    //     timer_on("Ind30              ");
-    //     ind30();
-    //     timer_off("Ind30              ");
-    //     timer_on("Ind30,r            ");
-    //     ind30r();
-    //     timer_off("Ind30,r            ");
-    //     timer_on("Exch-Ind30         ");
-    //     exch_ind30();
-    //     timer_off("Exch-Ind30         ");
-    //     // timer_on("IndDisp30          ");
-    //     // ind_disp30();
-    //     // timer_off("IndDisp30          ");
-    //     timer_on("ExchIndDisp30      ");
-    //     exch_ind_disp30();
-    //     timer_off("ExchIndDisp30      ");
-    // }
+    if (third_order_) {
+        // timer_on("ExchDisp30         ");
+        // exch_disp30();
+        // timer_off("ExchDisp30         ");
+        // timer_on("Ind30              ");
+        // ind30();
+        // timer_off("Ind30              ");
+        timer_on("Ind30,r            ");
+        ind30r();
+        timer_off("Ind30,r            ");
+        timer_on("Exch-Ind30         ");
+        exch_ind30();
+        timer_off("Exch-Ind30         ");
+        // timer_on("IndDisp30          ");
+        // ind_disp30();
+        // timer_off("IndDisp30          ");
+        // timer_on("ExchIndDisp30      ");
+        // exch_ind_disp30();
+        // timer_off("ExchIndDisp30      ");
+    }
 
     print_results();
 
-    return (e_sapt0_);
+    return (e_saptd4_);
 }
 
 void PSAPT::print_header() {
@@ -208,250 +208,97 @@ void PSAPT::print_header() {
 }
 
 void PSAPT::print_results() {
-    // The tolerance to scale exchange energies, i.e. if E_exch10 is
-    // less than the scaling tolerance, we do not scale.
-    double scaling_tol = 1.0e-5;
-
-    // The power applied to the scaling factor for sSAPT0
-    double alpha = 3.0;
-
-    double sapt_Xscal = (e_exch10_ < scaling_tol ? 1.0 : e_exch10_ / e_exch10_s2_);
-    if (exch_scale_alpha_ != 0.0) {
-        sapt_Xscal = pow(sapt_Xscal, exch_scale_alpha_);
-    }
-    double sSAPT_Xscal = pow(sapt_Xscal, alpha);
-
-    // Now we compute everything once without scaling, and then with scaling
-    // if requested.
-    std::vector<double> Xscal;
-    Xscal.push_back(1.0);
-    if (exch_scale_alpha_ != 0.0) Xscal.push_back(sapt_Xscal);
-
-    // Grab the supermolecular MP2 correlation energy if it is here
-    double e_MP2 = Process::environment.globals["SAPT MP2 CORRELATION ENERGY"];
-
     if (e_ind30r_ != 0.0)
         e_exch_ind30r_ = e_ind30r_ * (e_exch_ind30_ / e_ind30_);
     else
         e_exch_ind30r_ = 0.0;
+    
+    double dHF2 = eHF_ - (e_elst10_ + e_exch10_ + e_ind20_ + e_exch_ind20_);
+    // double dHF3 = eHF_ - (e_elst10_ + e_exch10_ + e_ind20_ +  e_exch_ind20_ + e_ind30r_ +
+    //                            e_exch_ind30r_);
 
-    // The main loop, computes everything with all scaling factors in
-    // the Xscal vector. Only exports variables once, for the scaling factor
-    // of 1.0.
-    std::vector<double>::iterator scal_it;
-    for (scal_it = Xscal.begin(); scal_it != Xscal.end(); ++scal_it) {
-        double dHF2 = eHF_ - (e_elst10_ + e_exch10_ + e_ind20_ + *scal_it * e_exch_ind20_);
-        double dHF3 = eHF_ - (e_elst10_ + e_exch10_ + e_ind20_ + *scal_it * e_exch_ind20_ + e_ind30r_ +
-                              *scal_it * e_exch_ind30r_);
+    e_sapt0_ = e_elst10_ + e_exch10_ + dHF2 + e_ind20_ + e_disp20_ + (e_exch_ind20_ + e_exch_disp20_);
+    
+    e_sapt2_ = e_elst10_ + e_exch10_ + dHF2 + e_ind20_ + e_disp20_ + (e_exch_ind20_ + e_exch_disp20_) +
+               e_elst12_ + (e_exch11_ + e_exch12_ + e_exch_ind22_) + e_ind22_;
 
-        double dMP2_2 = 0.0;
-        double dMP2_3 = 0.0;
-        if (e_MP2 != 0.0) {
-            dMP2_2 = e_MP2 - (e_elst12_ + e_ind22_ + e_disp20_ +
-                              *scal_it * (e_exch11_ + e_exch12_ + e_exch_ind22_ + e_exch_disp20_));
-            dMP2_3 = dMP2_2 - (e_ind_disp30_ + *scal_it * e_exch_ind_disp30_);
-        }
+    double ind3 = e_ind30r_ + e_exch_ind30r_ ;
+    double tot_elst = e_elst10_ + e_elst12_ + e_elst13_;
+    double tot_exch = e_exch10_ + (e_exch11_ + e_exch12_);
+    double tot_ind =  dHF2 + e_ind20_ + e_ind22_ + (e_exch_ind20_ + e_exch_ind22_ );
+    double tot_ind3 = (ind3)  + e_ind20_ + e_ind22_ + (e_exch_ind20_ + e_exch_ind22_ );
+    e_saptd4_ = tot_elst + tot_exch + tot_ind;
 
-        double e_disp_mp4 = *scal_it * e_exch_disp20_ + e_disp20_ + e_disp21_ + e_disp22sdq_;
-        if (nat_orbs_t3_) {
-            e_disp_mp4 += e_est_disp22t_;
-        } else {
-            e_disp_mp4 += e_disp22t_;
-        }
+    double tot_ct = e_ind20_ + e_ind22_ + e_ind30r_ + (e_exch_ind20_ + e_exch_ind22_ );
 
-        double e_disp_ccd = 0.0;
-        if (ccd_disp_) {
-            e_disp_ccd = *scal_it * e_exch_disp20_;
-            e_disp_ccd += e_disp2d_ccd_ + e_disp22s_ccd_;
-            if (nat_orbs_t3_) {
-                e_disp_ccd += e_est_disp22t_ccd_;
-            } else {
-                e_disp_ccd += e_disp22t_ccd_;
-            }
-        }
+    double tot_disp = 0.0;
 
-        e_sapt0_ = e_elst10_ + e_exch10_ + dHF2 + e_ind20_ + e_disp20_ + *scal_it * (e_exch_ind20_ + e_exch_disp20_);
-        double e_sSAPT0 = 0.0;
-        double elst_sSAPT0 = 0.0;
-        double exch_sSAPT0 = 0.0;
-        double ind_sSAPT0 = 0.0;
-        double disp_sSAPT0 = 0.0;
-        // sSAPT0 energy is now computed in the unscaled part for clarity
-        if (scal_it == Xscal.begin()) {
-            elst_sSAPT0 = e_elst10_;
-            exch_sSAPT0 = e_exch10_;
-            ind_sSAPT0 = e_ind20_ + sSAPT_Xscal * e_exch_ind20_ + dHF2;
-            disp_sSAPT0 = e_disp20_ + sSAPT_Xscal * e_exch_disp20_;
-            e_sSAPT0 = elst_sSAPT0 + exch_sSAPT0 + ind_sSAPT0 + disp_sSAPT0;
-        }
-        e_sapt2_ = e_elst10_ + e_exch10_ + dHF2 + e_ind20_ + e_disp20_ + *scal_it * (e_exch_ind20_ + e_exch_disp20_) +
-                   e_elst12_ + *scal_it * (e_exch11_ + e_exch12_ + e_exch_ind22_) + e_ind22_;
+    std::string scaled ="   ";
+    outfile->Printf(
+        "  "
+        "--------------------------------------------------------------------------------------------------------"
+        "\n");
+    outfile->Printf("    Electrostatics            %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    tot_elst * 1000.0, tot_elst * pc_hartree2kcalmol, tot_elst * pc_hartree2kJmol);
+    outfile->Printf("      Elst10,r                %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    e_elst10_ * 1000.0, e_elst10_ * pc_hartree2kcalmol, e_elst10_ * pc_hartree2kJmol);
+    outfile->Printf("      Elst12,r                %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    e_elst12_ * 1000.0, e_elst12_ * pc_hartree2kcalmol, e_elst12_ * pc_hartree2kJmol);
+    outfile->Printf("      Elst13,r                %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    e_elst13_ * 1000.0, e_elst13_ * pc_hartree2kcalmol, e_elst13_ * pc_hartree2kJmol);
+    outfile->Printf("\n    Exchange %3s              %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), tot_exch * 1000.0, tot_exch * pc_hartree2kcalmol, tot_exch * pc_hartree2kJmol);
+    outfile->Printf("      Exch10                  %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    e_exch10_ * 1000.0, e_exch10_ * pc_hartree2kcalmol, e_exch10_ * pc_hartree2kJmol);
+    // outfile->Printf("      Exch10(S^2)             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+    //                 e_exch10_s2_ * 1000.0, e_exch10_s2_ * pc_hartree2kcalmol, e_exch10_s2_ * pc_hartree2kJmol);
+    outfile->Printf("      Exch11(S^2) %3s         %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), e_exch11_ * 1000.0, e_exch11_ * pc_hartree2kcalmol,
+                    e_exch11_ * pc_hartree2kJmol);
+    outfile->Printf("      Exch12(S^2) %3s         %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), e_exch12_ * 1000.0, e_exch12_ * pc_hartree2kcalmol,
+                    e_exch12_ * pc_hartree2kJmol);
+    outfile->Printf("\n    Induction %3s             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), tot_ind * 1000.0, tot_ind * pc_hartree2kcalmol, tot_ind * pc_hartree2kJmol);
+    outfile->Printf("\n    Induction(3) %3s             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), tot_ind3 * 1000.0, tot_ind3 * pc_hartree2kcalmol, tot_ind3 * pc_hartree2kJmol);
+    outfile->Printf("      Ind20,r                 %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    e_ind20_ * 1000.0, e_ind20_ * pc_hartree2kcalmol, e_ind20_ * pc_hartree2kJmol);
+    
+    outfile->Printf("      Ind22                   %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    e_ind22_ * 1000.0, e_ind22_ * pc_hartree2kcalmol, e_ind22_ * pc_hartree2kJmol);
+    outfile->Printf("      Exch-Ind20,r %3s        %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), e_exch_ind20_ * 1000.0,
+                    e_exch_ind20_ * pc_hartree2kcalmol, e_exch_ind20_ * pc_hartree2kJmol);
 
-        e_sapt2p_ = e_elst10_ + e_exch10_ + dHF2 + e_ind20_ + *scal_it * (e_exch_ind20_) + e_elst12_ +
-                    *scal_it * (e_exch11_ + e_exch12_ + e_exch_ind22_) + e_ind22_ + e_disp_mp4;
+    outfile->Printf("      Exch-Ind22 %3s          %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), e_exch_ind22_ * 1000.0,
+                    e_exch_ind22_ * pc_hartree2kcalmol, e_exch_ind22_ * pc_hartree2kJmol);
+    outfile->Printf("      delta HF,r (2) %3s      %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), dHF2 * 1000.0, dHF2 * pc_hartree2kcalmol, dHF2 * pc_hartree2kJmol);
+    outfile->Printf("      delta HF,r (3) %3s      %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), dHF3 * 1000.0, dHF3 * pc_hartree2kcalmol, dHF3 * pc_hartree2kJmol);
+    outfile->Printf("      Ind30,r                 %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                        e_ind30r_ * 1000.0, e_ind30r_ * pc_hartree2kcalmol, e_ind30r_ * pc_hartree2kJmol);
 
-        double e_sapt2p_ccd_dmp2 = 0.0;
-        if (ccd_disp_) {
-            e_sapt2p_ccd_ = e_elst10_ + e_exch10_ + dHF2 + e_ind20_ + *scal_it * (e_exch_ind20_) + e_elst12_ +
-                            *scal_it * (e_exch11_ + e_exch12_ + e_exch_ind22_) + e_ind22_ + e_disp_ccd;
-            if (e_MP2 != 0.0) {
-                e_sapt2p_ccd_dmp2 = e_sapt2p_ccd_ + dMP2_2;
-            }
-        }
+    outfile->Printf("      Exch-Ind30,r %3s        %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                            scaled.c_str(),  e_exch_ind30r_ * 1000.0,
+                             e_exch_ind30r_ * pc_hartree2kcalmol,
+                             e_exch_ind30r_ * pc_hartree2kJmol);
+    outfile->Printf("\n    Dispersion %3s            %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), tot_disp * 1000.0, tot_disp * pc_hartree2kcalmol, tot_disp * pc_hartree2kJmol);
+    
 
-        double e_sapt2p_dmp2 = 0.0;
-        if (e_MP2 != 0.0) {
-            e_sapt2p_dmp2 = e_sapt2p_ + dMP2_2;
-        }
+    outfile->Printf("\n  Total HF                    %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    eHF_ * 1000.0, eHF_ * pc_hartree2kcalmol, eHF_ * pc_hartree2kJmol);
+    outfile->Printf("  Total SAPT0 %3s             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), e_sapt0_ * 1000.0, e_sapt0_ * pc_hartree2kcalmol, e_sapt0_ * pc_hartree2kJmol);
+    outfile->Printf("  Total SAPT2 %3s             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), e_sapt2_ * 1000.0, e_sapt2_ * pc_hartree2kcalmol, e_sapt2_ * pc_hartree2kJmol);
 
-        e_sapt2pp3_ = e_sapt2p_ + e_elst13_ + e_disp30_;
-        double e_sapt2pp3_ccd_dmp2 = 0.0;
-        if (ccd_disp_) {
-            e_sapt2pp3_ccd_ = e_sapt2p_ccd_ + e_elst13_ + e_disp30_;
-            if (e_MP2 != 0.0) {
-                e_sapt2pp3_ccd_dmp2 = e_sapt2pp3_ccd_ + dMP2_2;
-            }
-        }
-        double e_sapt_2pp3_dmp2 = 0.0;
-        if (e_MP2 != 0.0) {
-            e_sapt_2pp3_dmp2 = e_sapt2pp3_ + dMP2_2;
-        }
-
-        e_sapt2p3_ = e_elst10_ + e_elst12_ + e_elst13_ + e_exch10_ + *scal_it * (e_exch11_ + e_exch12_) + dHF3 +
-                     e_ind20_ + *scal_it * (e_exch_ind20_ + e_exch_ind22_ + e_exch_ind30r_) + e_ind22_ + e_ind30r_ +
-                     e_disp_mp4 + e_disp30_ + *scal_it * (e_exch_disp30_ + e_exch_ind_disp30_) + e_ind_disp30_;
-        double e_sapt2p3_ccd_dmp2 = 0.0;
-        if (ccd_disp_) {
-            e_sapt2p3_ccd_ = e_elst10_ + e_elst12_ + e_elst13_ + e_exch10_ + *scal_it * (e_exch11_ + e_exch12_) + dHF3 +
-                             e_ind20_ + *scal_it * (e_exch_ind20_ + e_exch_ind22_ + e_exch_ind30r_) + e_ind22_ +
-                             e_ind30r_ + e_disp_ccd + e_disp30_ + *scal_it * (e_exch_disp30_ + e_exch_ind_disp30_) +
-                             e_ind_disp30_;
-            if (e_MP2 != 0.0) {
-                e_sapt2p3_ccd_dmp2 = e_sapt2p3_ccd_ + dMP2_3;
-            }
-        }
-        double e_sapt2p3_dmp2 = 0.0;
-        if (e_MP2 != 0.0) {
-            e_sapt2p3_dmp2 = e_sapt2p3_ + dMP2_3;
-        }
-
-        double tot_elst = e_elst10_ + e_elst12_ + e_elst13_;
-        double tot_exch = e_exch10_ + *scal_it * (e_exch11_ + e_exch12_);
-        double tot_ind =
-            e_ind20_ + dHF3 + e_ind22_ + e_ind30r_ + *scal_it * (e_exch_ind20_ + e_exch_ind22_ + e_exch_ind30r_);
-        if (e_MP2 != 0.0) {tot_ind += dMP2_2; }
-        double tot_ct = e_ind20_ + e_ind22_ + e_ind30r_ + *scal_it * (e_exch_ind20_ + e_exch_ind22_ + e_exch_ind30r_);
-        double tot_disp = 0.0;
-        if (nat_orbs_t3_)
-            tot_disp = e_disp20_ + e_disp21_ + e_disp22sdq_ + e_est_disp22t_ + e_disp30_ + e_ind_disp30_ +
-                       *scal_it * (e_exch_disp20_ + e_exch_disp30_ + e_exch_ind_disp30_);
-        else
-            tot_disp = e_disp20_ + e_disp21_ + e_disp22sdq_ + e_disp22t_ + e_disp30_ + e_ind_disp30_ +
-                       *scal_it * (e_exch_disp20_ + e_exch_disp30_ + e_exch_ind_disp30_);
-
-
-        if (scal_it == Xscal.begin()) {
-            outfile->Printf("\n    SAPT Results \n");
-        } else {
-            outfile->Printf("\n    SAPT Results ==> ALL S2 TERMS SCALED (see Manual) <== \n");
-            outfile->Printf("\n    Scaling factor (Exch10/Exch10(S^2))^{Alpha} = %12.6f\n", *scal_it);
-            outfile->Printf("    with Alpha = %12.6f \n", exch_scale_alpha_);
-        }
-        std::string scaled = (scal_it != Xscal.begin() ? "sc." : "   ");
-        outfile->Printf(
-            "  "
-            "--------------------------------------------------------------------------------------------------------"
-            "\n");
-        outfile->Printf("    Electrostatics            %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        tot_elst * 1000.0, tot_elst * pc_hartree2kcalmol, tot_elst * pc_hartree2kJmol);
-        outfile->Printf("      Elst10,r                %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        e_elst10_ * 1000.0, e_elst10_ * pc_hartree2kcalmol, e_elst10_ * pc_hartree2kJmol);
-        outfile->Printf("      Elst12,r                %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        e_elst12_ * 1000.0, e_elst12_ * pc_hartree2kcalmol, e_elst12_ * pc_hartree2kJmol);
-        outfile->Printf("      Elst13,r                %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        e_elst13_ * 1000.0, e_elst13_ * pc_hartree2kcalmol, e_elst13_ * pc_hartree2kJmol);
-        outfile->Printf("\n    Exchange %3s              %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        scaled.c_str(), tot_exch * 1000.0, tot_exch * pc_hartree2kcalmol, tot_exch * pc_hartree2kJmol);
-        outfile->Printf("      Exch10                  %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        e_exch10_ * 1000.0, e_exch10_ * pc_hartree2kcalmol, e_exch10_ * pc_hartree2kJmol);
-        outfile->Printf("      Exch10(S^2)             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        e_exch10_s2_ * 1000.0, e_exch10_s2_ * pc_hartree2kcalmol, e_exch10_s2_ * pc_hartree2kJmol);
-        outfile->Printf("      Exch11(S^2) %3s         %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        scaled.c_str(), *scal_it * e_exch11_ * 1000.0, *scal_it * e_exch11_ * pc_hartree2kcalmol,
-                        *scal_it * e_exch11_ * pc_hartree2kJmol);
-        outfile->Printf("      Exch12(S^2) %3s         %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        scaled.c_str(), *scal_it * e_exch12_ * 1000.0, *scal_it * e_exch12_ * pc_hartree2kcalmol,
-                        *scal_it * e_exch12_ * pc_hartree2kJmol);
-        outfile->Printf("\n    Induction %3s             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        scaled.c_str(), tot_ind * 1000.0, tot_ind * pc_hartree2kcalmol, tot_ind * pc_hartree2kJmol);
-        outfile->Printf("      Ind20,r                 %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        e_ind20_ * 1000.0, e_ind20_ * pc_hartree2kcalmol, e_ind20_ * pc_hartree2kJmol);
-
-        outfile->Printf("      Ind22                   %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        e_ind22_ * 1000.0, e_ind22_ * pc_hartree2kcalmol, e_ind22_ * pc_hartree2kJmol);
-        outfile->Printf("      Exch-Ind20,r %3s        %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        scaled.c_str(), *scal_it * e_exch_ind20_ * 1000.0,
-                        *scal_it * e_exch_ind20_ * pc_hartree2kcalmol, *scal_it * e_exch_ind20_ * pc_hartree2kJmol);
-
-        outfile->Printf("      Exch-Ind22 %3s          %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        scaled.c_str(), *scal_it * e_exch_ind22_ * 1000.0,
-                        *scal_it * e_exch_ind22_ * pc_hartree2kcalmol, *scal_it * e_exch_ind22_ * pc_hartree2kJmol);
-        outfile->Printf("      delta HF,r (2) %3s      %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        scaled.c_str(), dHF2 * 1000.0, dHF2 * pc_hartree2kcalmol, dHF2 * pc_hartree2kJmol);
-        
-        if (e_MP2 != 0.0) {
-            outfile->Printf("      delta MP2,r (2) %3s     %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            scaled.c_str(), dMP2_2 * 1000.0, dMP2_2 * pc_hartree2kcalmol, dMP2_2 * pc_hartree2kJmol);
-        }
-        outfile->Printf("\n    Dispersion %3s            %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        scaled.c_str(), tot_disp * 1000.0, tot_disp * pc_hartree2kcalmol, tot_disp * pc_hartree2kJmol);
-        outfile->Printf("      Disp20                  %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        e_disp20_ * 1000.0, e_disp20_ * pc_hartree2kcalmol, e_disp20_ * pc_hartree2kJmol);
-        outfile->Printf("      Disp30                  %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        e_disp30_ * 1000.0, e_disp30_ * pc_hartree2kcalmol, e_disp30_ * pc_hartree2kJmol);
-        outfile->Printf("      Disp21                  %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        e_disp21_ * 1000.0, e_disp21_ * pc_hartree2kcalmol, e_disp21_ * pc_hartree2kJmol);
-        if (mbpt_disp_) {
-            outfile->Printf("      Disp22 (SDQ)            %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            e_disp22sdq_ * 1000.0, e_disp22sdq_ * pc_hartree2kcalmol, e_disp22sdq_ * pc_hartree2kJmol);
-            outfile->Printf("      Disp22 (T)              %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            e_disp22t_ * 1000.0, e_disp22t_ * pc_hartree2kcalmol, e_disp22t_ * pc_hartree2kJmol);
-            if (nat_orbs_t3_)
-                outfile->Printf("      Est. Disp22 (T)         %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                                e_est_disp22t_ * 1000.0, e_est_disp22t_ * pc_hartree2kcalmol,
-                                e_est_disp22t_ * pc_hartree2kJmol);
-        }
-        
-        outfile->Printf("      Exch-Disp20 %3s         %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        scaled.c_str(), *scal_it * e_exch_disp20_ * 1000.0,
-                        *scal_it * e_exch_disp20_ * pc_hartree2kcalmol, *scal_it * e_exch_disp20_ * pc_hartree2kJmol);
-
-        outfile->Printf("\n  Total HF                    %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        eHF_ * 1000.0, eHF_ * pc_hartree2kcalmol, eHF_ * pc_hartree2kJmol);
-        outfile->Printf("  Total SAPT0 %3s             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        scaled.c_str(), e_sapt0_ * 1000.0, e_sapt0_ * pc_hartree2kcalmol, e_sapt0_ * pc_hartree2kJmol);
-        outfile->Printf("  Total SAPT2 %3s             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                        scaled.c_str(), e_sapt2_ * 1000.0, e_sapt2_ * pc_hartree2kcalmol, e_sapt2_ * pc_hartree2kJmol);
-        if (mbpt_disp_) {
-            outfile->Printf("  Total SAPT2+ %3s            %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            scaled.c_str(), e_sapt2p_ * 1000.0, e_sapt2p_ * pc_hartree2kcalmol,
-                            e_sapt2p_ * pc_hartree2kJmol);
-            outfile->Printf("  Total SAPT2+(3) %3s         %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                            scaled.c_str(), e_sapt2pp3_ * 1000.0, e_sapt2pp3_ * pc_hartree2kcalmol,
-                            e_sapt2pp3_ * pc_hartree2kJmol);
-
-            if (e_MP2 != 0.0) {
-                outfile->Printf("  Total SAPT2+dMP2 %3s        %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                                scaled.c_str(), e_sapt2p_dmp2 * 1000.0, e_sapt2p_dmp2 * pc_hartree2kcalmol,
-                                e_sapt2p_dmp2 * pc_hartree2kJmol);
-                outfile->Printf("  Total SAPT2+(3)dMP2 %3s     %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                                scaled.c_str(), e_sapt_2pp3_dmp2 * 1000.0, e_sapt_2pp3_dmp2 * pc_hartree2kcalmol,
-                                e_sapt_2pp3_dmp2 * pc_hartree2kJmol);
-
-            }
-        }
-        
-
+    
+    outfile->Printf("    delta(Ind - Ind(3))            %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    tot_ind - tot_ind3 * 1000.0, tot_ind - tot_ind3 * pc_hartree2kcalmol, tot_ind - tot_ind3 * pc_hartree2kJmol);    
 
 
 
@@ -469,7 +316,7 @@ void PSAPT::print_results() {
             /*- Process::environment.globals["SAPT TOTAL ENERGY"] -*/
 
         
-    }
+    // }
 }
 }  // namespace sapt
 }  // namespace psi
