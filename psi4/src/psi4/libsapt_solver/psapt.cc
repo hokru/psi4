@@ -276,8 +276,8 @@ void PSAPT::print_results() {
                     e_exch_ind22_ * pc_hartree2kcalmol, e_exch_ind22_ * pc_hartree2kJmol);
     outfile->Printf("      delta HF,r (2) %3s      %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                     scaled.c_str(), dHF2 * 1000.0, dHF2 * pc_hartree2kcalmol, dHF2 * pc_hartree2kJmol);
-    outfile->Printf("      delta HF,r (3) %3s      %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                    scaled.c_str(), dHF3 * 1000.0, dHF3 * pc_hartree2kcalmol, dHF3 * pc_hartree2kJmol);
+    // outfile->Printf("      delta HF,r (3) %3s      %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+    //                 scaled.c_str(), dHF3 * 1000.0, dHF3 * pc_hartree2kcalmol, dHF3 * pc_hartree2kJmol);
     outfile->Printf("      Ind30,r                 %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                         e_ind30r_ * 1000.0, e_ind30r_ * pc_hartree2kcalmol, e_ind30r_ * pc_hartree2kJmol);
 
