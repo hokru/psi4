@@ -134,9 +134,9 @@ double PSAPT::compute_energy() {
         // timer_on("ExchDisp30         ");
         // exch_disp30();
         // timer_off("ExchDisp30         ");
-        // timer_on("Ind30              ");
-        // ind30();
-        // timer_off("Ind30              ");
+        timer_on("Ind30              ");
+        ind30();
+        timer_off("Ind30              ");
         timer_on("Ind30,r            ");
         ind30r();
         timer_off("Ind30,r            ");
