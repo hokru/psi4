@@ -215,7 +215,7 @@ void PSAPT::print_results() {
     double tot_elst = e_elst10_ + e_elst12_ + e_elst13_;
     double tot_exch = e_exch10_ + (e_exch11_ + e_exch12_);
     double tot_ind =  dHF2 + e_ind20_ + e_ind22_ + (e_exch_ind20_ + e_exch_ind22_ );
-    double tot_ind3 = (ind3)  + e_ind20_ + e_ind22_ + (e_exch_ind20_ + e_exch_ind22_ );
+    double tot_ind3 = (ind3)  + tot_ind;
     e_saptd4_ = tot_elst + tot_exch + tot_ind;
 
     double tot_ct = e_ind20_ + e_ind22_ + e_ind30r_ + (e_exch_ind20_ + e_exch_ind22_ );
@@ -249,7 +249,7 @@ void PSAPT::print_results() {
                     e_exch12_ * pc_hartree2kJmol);
     outfile->Printf("\n    Induction %3s             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                     scaled.c_str(), tot_ind * 1000.0, tot_ind * pc_hartree2kcalmol, tot_ind * pc_hartree2kJmol);
-    outfile->Printf("\n    Induction(3) %3s             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+    outfile->Printf("    Induction(3) %3s          %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                     scaled.c_str(), tot_ind3 * 1000.0, tot_ind3 * pc_hartree2kcalmol, tot_ind3 * pc_hartree2kJmol);
     outfile->Printf("      Ind20,r                 %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                     e_ind20_ * 1000.0, e_ind20_ * pc_hartree2kcalmol, e_ind20_ * pc_hartree2kJmol);
@@ -274,6 +274,8 @@ void PSAPT::print_results() {
                             scaled.c_str(),  e_exch_ind30r_ * 1000.0,
                              e_exch_ind30r_ * pc_hartree2kcalmol,
                              e_exch_ind30r_ * pc_hartree2kJmol);
+    // outfile->Printf("      sum(IND3) %3s        %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+    //                  scaled.c_str(),   ind3 * 1000.0, ind3 * pc_hartree2kcalmol, ind3 * pc_hartree2kJmol);
     outfile->Printf("\n    Dispersion %3s            %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                     scaled.c_str(), tot_disp * 1000.0, tot_disp * pc_hartree2kcalmol, tot_disp * pc_hartree2kJmol);
     
@@ -287,7 +289,7 @@ void PSAPT::print_results() {
 
     
     outfile->Printf("    delta(Ind - Ind(3))            %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
-                    tot_ind - tot_ind3 * 1000.0, tot_ind - tot_ind3 * pc_hartree2kcalmol, tot_ind - tot_ind3 * pc_hartree2kJmol);    
+                    (tot_ind - tot_ind3) * 1000.0, (tot_ind - tot_ind3) * pc_hartree2kcalmol, (tot_ind - tot_ind3) * pc_hartree2kJmol);    
 
 
 
