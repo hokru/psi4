@@ -286,7 +286,8 @@ void PSAPT::print_results() {
                     scaled.c_str(), e_sapt0_ * 1000.0, e_sapt0_ * pc_hartree2kcalmol, e_sapt0_ * pc_hartree2kJmol);
     outfile->Printf("  Total SAPT2 %3s             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                     scaled.c_str(), e_sapt2_ * 1000.0, e_sapt2_ * pc_hartree2kcalmol, e_sapt2_ * pc_hartree2kJmol);
-
+    outfile->Printf("  Total SAPT-D4 %3s             %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
+                    scaled.c_str(), e_saptd4_ * 1000.0, e_saptd4_ * pc_hartree2kcalmol, e_saptd4_ * pc_hartree2kJmol);
     
     outfile->Printf("    delta(Ind - Ind(3))            %16.8lf [mEh] %16.8lf [kcal/mol] %16.8lf [kJ/mol]\n",
                     (tot_ind - tot_ind3) * 1000.0, (tot_ind - tot_ind3) * pc_hartree2kcalmol, (tot_ind - tot_ind3) * pc_hartree2kJmol);    
