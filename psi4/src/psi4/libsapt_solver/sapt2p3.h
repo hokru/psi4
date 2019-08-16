@@ -41,7 +41,9 @@ class SAPT2p3 : public SAPT2p {
 
     bool third_order_;
 
+
    protected:
+    bool do_saptd4_;
     double e_elst13_;
     double e_ind30_;
     double e_exch_ind30_;

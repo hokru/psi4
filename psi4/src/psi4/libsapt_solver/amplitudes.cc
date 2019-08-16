@@ -817,6 +817,7 @@ void SAPT2p3::amplitudes() {
        "Y3 BS Amplitudes");
 
     if (third_order_) {
+        timer_on("Ind3-Amps        ");
         ind30_amps(PSIF_SAPT_AA_DF_INTS, "AR RI Integrals", PSIF_SAPT_BB_DF_INTS, "BS RI Integrals", wBAA_, wBAR_,
                    wBRR_, wABS_, noccA_, nvirA_, evalsA_, noccB_, nvirB_, evalsB_, PSIF_SAPT_AMPS,
                    "Ind30 uAR Amplitudes");
@@ -825,6 +826,9 @@ void SAPT2p3::amplitudes() {
                    "Ind30 uBS Amplitudes");
 
         inddisp30_amps();
+        timer_off("Ind3-Amps        ");
+        if (do_saptd4_) return;
+
 
         timer_on("Disp30-Amps        ");
         disp30_amps(PSIF_SAPT_AMPS, "tARBS Amplitudes", PSIF_SAPT_AA_DF_INTS, "AA RI Integrals", "RR RI Integrals",

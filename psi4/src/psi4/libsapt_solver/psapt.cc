@@ -39,27 +39,13 @@ namespace sapt {
 PSAPT::PSAPT(SharedWavefunction Dimer, SharedWavefunction MonomerA, SharedWavefunction MonomerB, Options& options,
                  std::shared_ptr<PSIO> psio)
     : SAPT2p3(Dimer, MonomerA, MonomerB, options, psio)
-      // e_elst13_(0.0),
-      // e_ind30_(0.0),
-      // e_exch_ind30_(0.0),
-      // e_ind30r_(0.0),
-      // e_exch_ind30r_(0.0),
-      // e_ind_disp30_(0.0),
-      // e_exch_ind_disp30_(0.0),
-      // e_disp30_(0.0),
-      // e_exch_disp30_(0.0),
-      // e_sapt2pp3_(0.0),
-      // e_sapt2p3_(0.0),
-      // e_sapt2pp3_ccd_(0.0),
-//       e_sapt2p3_ccd_(0.0) {
-    {third_order_ = options_.get_bool("DO_THIRD_ORDER");}
-// {}
+{}
 
 PSAPT::~PSAPT() {}
 
 double PSAPT::compute_energy() {
     print_header();
-    
+    SAPT2p3::do_saptd4_ = true;
     timer_on("DF Integrals       ");
     df_integrals();
     timer_off("DF Integrals       ");
