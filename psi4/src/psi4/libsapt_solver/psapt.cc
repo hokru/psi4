@@ -47,12 +47,15 @@ double PSAPT::compute_energy() {
     print_header();
     SAPT2p3::do_saptd4_ = true;
     timer_on("DF Integrals       ");
+    outfile->Printf("    df_integrals ..\n");
     df_integrals();
     timer_off("DF Integrals       ");
     timer_on("Omega Integrals    ");
+    outfile->Printf("    omega integrals ..\n");
     w_integrals();
     timer_off("Omega Integrals    ");
     timer_on("Amplitudes         ");
+    outfile->Printf("    amplitudes ..\n");
     SAPT2p3::amplitudes();
     timer_off("Amplitudes         ");
     timer_on("Elst10             ");
