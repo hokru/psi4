@@ -800,20 +800,42 @@ void BasisFunctions::compute_functions(std::shared_ptr<BlockOPoints> block) {
 
     // GG spits it out tranpose of what we need
     int nso = max_functions_;
-    gg_fast_transpose(nso, npoints, tmpp, valuesp);
-    if (deriv_ >= 1) {
-        gg_fast_transpose(nso, npoints, tmp_xp, values_xp);
-        gg_fast_transpose(nso, npoints, tmp_yp, values_yp);
-        gg_fast_transpose(nso, npoints, tmp_zp, values_zp);
+    do_fast_=0;
+    printf("fast? %d; nso: %d; npoints: %d \n|",do_fast_,nso,npoints);
+    if (do_fast_ == 1){
+        gg_fast_transpose(nso, npoints, tmpp, valuesp);
+        if (deriv_ >= 1) {
+            gg_fast_transpose(nso, npoints, tmp_xp, values_xp);
+            gg_fast_transpose(nso, npoints, tmp_yp, values_yp);
+            gg_fast_transpose(nso, npoints, tmp_zp, values_zp);
+        }
+        if (deriv_ >= 2) {
+            gg_fast_transpose(nso, npoints, tmp_xxp, values_xxp);
+            gg_fast_transpose(nso, npoints, tmp_xyp, values_xyp);
+            gg_fast_transpose(nso, npoints, tmp_xzp, values_xzp);
+            gg_fast_transpose(nso, npoints, tmp_yyp, values_yyp);
+            gg_fast_transpose(nso, npoints, tmp_yzp, values_yzp);
+            gg_fast_transpose(nso, npoints, tmp_zzp, values_zzp);
+        }
     }
-    if (deriv_ >= 2) {
-        gg_fast_transpose(nso, npoints, tmp_xxp, values_xxp);
-        gg_fast_transpose(nso, npoints, tmp_xyp, values_xyp);
-        gg_fast_transpose(nso, npoints, tmp_xzp, values_xzp);
-        gg_fast_transpose(nso, npoints, tmp_yyp, values_yyp);
-        gg_fast_transpose(nso, npoints, tmp_yzp, values_yzp);
-        gg_fast_transpose(nso, npoints, tmp_zzp, values_zzp);
+    else {
+        gg_naive_transpose(nso, npoints, tmpp, valuesp);
+        if (deriv_ >= 1) {
+            gg_naive_transpose(nso, npoints, tmp_xp, values_xp);
+            gg_naive_transpose(nso, npoints, tmp_yp, values_yp);
+            gg_naive_transpose(nso, npoints, tmp_zp, values_zp);
+        }
+        if (deriv_ >= 2) {
+            gg_naive_transpose(nso, npoints, tmp_xxp, values_xxp);
+            gg_naive_transpose(nso, npoints, tmp_xyp, values_xyp);
+            gg_naive_transpose(nso, npoints, tmp_xzp, values_xzp);
+            gg_naive_transpose(nso, npoints, tmp_yyp, values_yyp);
+            gg_naive_transpose(nso, npoints, tmp_yzp, values_yzp);
+            gg_naive_transpose(nso, npoints, tmp_zzp, values_zzp);
+        }
     }
+    
+    
 }
 void BasisFunctions::print(std::string out, int print) const {
     std::shared_ptr<psi::PsiOutStream> printer = (out == "outfile" ? outfile : std::make_shared<PsiOutStream>(out));

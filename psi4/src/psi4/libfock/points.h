@@ -47,6 +47,7 @@ class BlockOPoints;
 
 class PSI_API BasisFunctions {
    protected:
+    int do_fast_;
     /// Basis set for this BasisFunctions
     std::shared_ptr<BasisSet> primary_;
     /// Pure AM or not
@@ -82,6 +83,7 @@ class PSI_API BasisFunctions {
     int max_functions() const { return max_functions_; }
     int max_points() const { return max_points_; }
     int deriv() const { return deriv_; }
+    void set_gg_fast_transpose(int do_fast){ do_fast_ = do_fast;}
 
     virtual void print(std::string out_fname = "outfile", int print = 2) const;
 

@@ -188,6 +188,7 @@ void export_functional(py::module &m) {
         .def("deriv", &BasisFunctions::deriv, "docstring")
         .def("set_deriv", &BasisFunctions::set_deriv, "docstring")
         .def("compute_functions", &BasisFunctions::compute_functions, "docstring")
+        .def("set_fast",&BasisFunctions::set_gg_fast_transpose, "flag"_a,"docstring")
         .def("basis_values", &BasisFunctions::basis_values, "docstring");
 
     typedef void (PointFunctions::*matrix_set1)(SharedMatrix);
