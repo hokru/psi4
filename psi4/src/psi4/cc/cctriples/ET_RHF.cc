@@ -99,7 +99,7 @@ double ET_RHF() {
     long int thread_mem_estimate = 4 * max_a * max_a * max_a;
 
     outfile->Printf("    Memory available in words        : %15ld\n", mem_avail);
-    outfile->Printf("    ~Words needed per explicit thread: %15ld\n", thread_mem_estimate);
+    outfile->Printf("    Words needed per explicit thread: %15ld\n", thread_mem_estimate);
 
     // subtract at least 1/2 for non-abc quantities (mainly 2 ijab's + other buffers)
     double tval = (double)mem_avail / (double)thread_mem_estimate;
