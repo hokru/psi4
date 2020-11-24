@@ -152,7 +152,9 @@ void RKSFunctions::set_pointers(SharedMatrix /*Da_AO*/, SharedMatrix /*Db_AO*/) 
 void RKSFunctions::compute_points(std::shared_ptr<BlockOPoints> block, bool force_compute) {
     if (!D_AO_) throw PSIEXCEPTION("RKSFunctions: call set_pointers.");
 
+    auto rank = 1;
     // => Build basis function values <= //
+    parallel_timer_on("compute functions",rank);
     block_index_ = block->index();
     if (!force_compute && cache_map_ && (cache_map_->find(block->index()) != cache_map_->end())) {
         current_basis_map_ = &(*cache_map_)[block->index()];
@@ -160,16 +162,20 @@ void RKSFunctions::compute_points(std::shared_ptr<BlockOPoints> block, bool forc
         current_basis_map_ = &basis_values_;
         BasisFunctions::compute_functions(block);
     }
+    parallel_timer_off("compute functions",rank);
 
     // => Global information <= //
+    parallel_timer_on("global mapping",rank);
     int npoints = block->npoints();
     const std::vector<int>& function_map = block->functions_local_to_global();
     int nglobal = max_functions_;
     int nlocal = function_map.size();
+    parallel_timer_off("global mapping",rank);
 
     double** Tp = temp_->pointer();
 
-    // => Build local D matrix <= //
+    // => Build local D matrix <= 
+    parallel_timer_on("local D matrix",rank);//
     double** Dp = D_AO_->pointer();
     double** D2p = D_local_->pointer();
 
@@ -184,20 +190,28 @@ void RKSFunctions::compute_points(std::shared_ptr<BlockOPoints> block, bool forc
             D2p[nl][ml] = Dval;
         }
     }
+    parallel_timer_off("local D matrix",rank);//
 
     // => Build LSDA quantities <= //
     double** phip = basis_value("PHI")->pointer();
     double* rhoap = point_value("RHO_A")->pointer();
     size_t coll_funcs = basis_value("PHI")->ncol();
-
+    
     // Rho_a = 2.0 * D_xy phi_xa phi_ya
+    parallel_timer_on("LSDA DGEMM",rank);//
+    printf("%i %i %i %i \n",npoints,coll_funcs,nlocal,nglobal);
     C_DGEMM('N', 'N', npoints, nlocal, nlocal, 2.0, phip[0], coll_funcs, D2p[0], nglobal, 0.0, Tp[0], nglobal);
+    parallel_timer_off("LSDA DGEMM",rank);//
+    parallel_timer_on("LSDA DDOT",rank);//
     for (int P = 0; P < npoints; P++) {
         rhoap[P] = C_DDOT(nlocal, phip[P], 1, Tp[P], 1);
     }
+    parallel_timer_off("LSDA DDOT",rank);//
+    
 
     // => Build GGA quantities <= //
     // Rho^l_a = D_xy phi_xa phi^l_ya
+    parallel_timer_on("GGA",rank);//
     if (ansatz_ >= 1) {
         double** phixp = basis_value("PHI_X")->pointer();
         double** phiyp = basis_value("PHI_Y")->pointer();
@@ -217,7 +231,26 @@ void RKSFunctions::compute_points(std::shared_ptr<BlockOPoints> block, bool forc
             rhoazp[P] = rho_z;
             gammaaap[P] = rho_x * rho_x + rho_y * rho_y + rho_z * rho_z;
         }
+
+        // for (int P = 0; P < npoints; P++) {
+        //     // 2.0 for Px D P + P D Px
+        //     double rho_x = C_DDOT(nlocal, phixp[P], 1, Tp[P], 1);
+        //     double rho_y = C_DDOT(nlocal, phiyp[P], 1, Tp[P], 1);
+        //     double rho_z = C_DDOT(nlocal, phizp[P], 1, Tp[P], 1);
+        //     rhoaxp[P] = rho_x;
+        //     rhoayp[P] = rho_y;
+        //     rhoazp[P] = rho_z;
+        // }
+        // C_DSCAL(npoints,2.0,rhoaxp,1);
+        // C_DSCAL(npoints,2.0,rhoayp,1);
+        // C_DSCAL(npoints,2.0,rhoazp,1);
+        // #pragma omp for simd aligned(rhoaxp,rhoayp,rhoazp)
+        // for (int P = 0; P < npoints; P++) {
+        //     gammaaap[P] = rhoaxp[P]*rhoaxp[P]+rhoayp[P]*rhoayp[P]+rhoazp[P]*rhoazp[P];
+        // }
+        
     }
+    parallel_timer_off("GGA",rank);//
 
     // => Build Meta quantities <= //
     if (ansatz_ >= 2) {
@@ -767,14 +800,19 @@ void BasisFunctions::compute_functions(std::shared_ptr<BlockOPoints> block) {
         const int order = (int)puream_ ? GG_SPHERICAL_GAUSSIAN : GG_CARTESIAN_CCA;
 
         // Copmute collocation
+        parallel_timer_on("collocation",1);
         if (deriv_ == 0) {
+            parallel_timer_on("collocation d=0",1);
             gg_collocation(L, npoints, xyz, 1, nprim, norm, alpha, center.data(), order, phi_start);
+            parallel_timer_off("collocation d=0",1);
         } else if (deriv_ == 1) {
+            parallel_timer_on("collocation d=1",1);
             double* phi_x_start = tmp_xp + row_shift;
             double* phi_y_start = tmp_yp + row_shift;
             double* phi_z_start = tmp_zp + row_shift;
             gg_collocation_deriv1(L, npoints, xyz, 1, nprim, norm, alpha, center.data(), order, phi_start,
                                   phi_x_start, phi_y_start, phi_z_start);
+            parallel_timer_off("collocation d=1",1);
 
         } else if (deriv_ == 2) {
             double* phi_x_start = tmp_xp + row_shift;
@@ -790,6 +828,7 @@ void BasisFunctions::compute_functions(std::shared_ptr<BlockOPoints> block) {
                                   phi_x_start, phi_y_start, phi_z_start, phi_xx_start, phi_xy_start, phi_xz_start,
                                   phi_yy_start, phi_yz_start, phi_zz_start);
         }
+        parallel_timer_off("collocation",1);
 
         if (puream_) {
             nvals += 2 * L + 1;
@@ -799,6 +838,7 @@ void BasisFunctions::compute_functions(std::shared_ptr<BlockOPoints> block) {
     }
 
     // GG spits it out tranpose of what we need
+    parallel_timer_on("transpose",1);
     int nso = max_functions_;
     gg_fast_transpose(nso, npoints, tmpp, valuesp);
     if (deriv_ >= 1) {
@@ -814,6 +854,7 @@ void BasisFunctions::compute_functions(std::shared_ptr<BlockOPoints> block) {
         gg_fast_transpose(nso, npoints, tmp_yzp, values_yzp);
         gg_fast_transpose(nso, npoints, tmp_zzp, values_zzp);
     }
+    parallel_timer_off("transpose",1);
 }
 void BasisFunctions::print(std::string out, int print) const {
     std::shared_ptr<psi::PsiOutStream> printer = (out == "outfile" ? outfile : std::make_shared<PsiOutStream>(out));
