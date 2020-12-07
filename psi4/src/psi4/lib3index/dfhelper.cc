@@ -3315,6 +3315,7 @@ void DFHelper::compute_K(std::vector<SharedMatrix> Cleft, std::vector<SharedMatr
         double* Kp = K[i]->pointer()[0];
 
         // compute first tmp
+        timer_on("DFH: pQp transform");
         first_transform_pQq(nocc, bcount, block_size, Mp, T1p, Clp, C_buffers);
 
         // compute second tmp
@@ -3323,10 +3324,12 @@ void DFHelper::compute_K(std::vector<SharedMatrix> Cleft, std::vector<SharedMatr
         } else {
             first_transform_pQq(nocc, bcount, block_size, Mp, T2p, Crp, C_buffers);
         }
-
+        timer_off("DFH: pQp transform");
+        timer_on("DFH: K DGEMM");
         // compute K
         C_DGEMM('N', 'T', nbf_, nbf_, nocc * block_size, 1.0, T1p, nocc * block_size, T2p, nocc * block_size, 1.0, Kp,
                 nbf_);
+        timer_off("DFH: K DGEMM");
     }
 }
 void DFHelper::compute_wK(std::vector<SharedMatrix> Cleft, std::vector<SharedMatrix> Cright,
